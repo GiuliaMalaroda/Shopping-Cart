@@ -9,7 +9,7 @@ const products = [
 const Cart = (props) => {
   const { Card, Accordion, Button } = ReactBootstrap;
   let data = props.location.data ? props.location.data : products;
-  console.log(`data:${JSON.stringify(data)}`);
+  // console.log(`data:${JSON.stringify(data)}`);
 
   return <Accordion defaultActiveKey="0">{list}</Accordion>;
 };
@@ -75,7 +75,7 @@ const dataFetchReducer = (state, action) => {
 };
 
 const Products = (props) => {
-  const [items, setItems] = React.useState(products);
+  const [items, setItems] = React.useState([]);
   const [cart, setCart] = React.useState([]);
   const [total, setTotal] = React.useState(0);
   const {
@@ -95,14 +95,18 @@ const Products = (props) => {
   //  Fetch Data
   const { Fragment, useState, useEffect, useReducer } = React;
   const [query, setQuery] = useState("http://localhost:1337/products");
-  const [{ data, isLoading, isError }, doFetch] = useDataApi("http://localhost:1337/products", { data: [], } );
-  console.log(`Rendering Products ${JSON.stringify(data)}`);
+  const [{ data, isLoading, isError }, doFetch] = useDataApi("http://localhost:1337/products", [] );
+  
+  //console.log(`Rendering Products ${JSON.stringify(data)}`);
+  useEffect(() => {
+    setItems(data)
+  }, [data])
 
   // Fetch Data
   const addToCart = (e) => {
     let name = e.target.name;
     let item = items.filter((item) => item.name == name);
-    console.log(`add to Cart ${JSON.stringify(item)}`);
+    // console.log(`add to Cart ${JSON.stringify(item)}`);
     setCart([...cart, ...item]);
     
     let stock = item[0].instock - 1;
@@ -121,8 +125,12 @@ const Products = (props) => {
   };
 
   let list = items.map((item, index) => {
-    let n = index + 1049;
-    let url = "https://picsum.photos/id/" + n + "/50/50";
+    let url = "";
+    if (item.image) {
+      url = `http://localhost:1337${item.image.formats.thumbnail.url}`;
+    }
+
+    // console.log(item);
 
     return (
       <li key={index}>
@@ -180,8 +188,8 @@ const Products = (props) => {
   const restockProducts = (url) => {
     doFetch(url);
     let newItems = data.map((newItem) => {
-      let {name,country,cost,instock} = newItem;
-      return {name,country,cost,instock};
+      let {name,country,cost,instock,image} = newItem;
+      return {name,country,cost,instock,image};
     });
     setItems([...newItems]);
   };
@@ -199,7 +207,7 @@ const Products = (props) => {
             onSubmit={(event) => {
               event.preventDefault();
               restockProducts(query);
-              console.log(`Restock called on ${query}`);
+              // console.log(`Restock called on ${query}`);
             }}
           >
             <InputGroup className="mb-3">
