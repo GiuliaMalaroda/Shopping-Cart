@@ -1,9 +1,9 @@
 // simulate getting products from DataBase
 const products = [
-  { name: "Apples_:", country: "Italy", cost: 3, instock: 10 },
-  { name: "Oranges:", country: "Spain", cost: 4, instock: 3 },
-  { name: "Beans__:", country: "USA", cost: 2, instock: 5 },
-  { name: "Cabbage:", country: "USA", cost: 1, instock: 8 },
+  { name: "Apples", country: "Italy", cost: 3, instock: 10 },
+  { name: "Oranges", country: "Spain", cost: 4, instock: 3 },
+  { name: "Beans", country: "USA", cost: 2, instock: 5 },
+  { name: "Cabbage", country: "USA", cost: 1, instock: 8 },
 ];
 //=========Cart=============
 const Cart = (props) => {
@@ -82,67 +82,78 @@ const Products = (props) => {
     Card,
     Accordion,
     Button,
+    Badge,
     Container,
     Row,
     Col,
     Image,
     Input,
+    InputGroup,
+    FormControl
   } = ReactBootstrap;
+
   //  Fetch Data
   const { Fragment, useState, useEffect, useReducer } = React;
   const [query, setQuery] = useState("http://localhost:1337/products");
-  const [{ data, isLoading, isError }, doFetch] = useDataApi(
-    "http://localhost:1337/products",
-    {
-      data: [],
-    }
-  );
+  const [{ data, isLoading, isError }, doFetch] = useDataApi("http://localhost:1337/products", { data: [], } );
   console.log(`Rendering Products ${JSON.stringify(data)}`);
+
   // Fetch Data
   const addToCart = (e) => {
     let name = e.target.name;
     let item = items.filter((item) => item.name == name);
     console.log(`add to Cart ${JSON.stringify(item)}`);
     setCart([...cart, ...item]);
-    //doFetch(query);
+    
+    let stock = item[0].instock - 1;
+    items.find((item) => item.name == name).instock = stock;
+    setItems([...items]);
   };
-  const deleteCartItem = (index) => {
+
+  const deleteCartItem = (index, item) => {
     let newCart = cart.filter((item, i) => index != i);
     setCart(newCart);
+
+    let removedItem = item;
+    let stock = removedItem.instock + 1;
+    items.find((item) => item.name == removedItem.name).instock = stock;
+    setItems([...items]);
   };
-  const photos = ["apple.png", "orange.png", "beans.png", "cabbage.png"];
 
   let list = items.map((item, index) => {
-    //let n = index + 1049;
-    //let url = "https://picsum.photos/id/" + n + "/50/50";
+    let n = index + 1049;
+    let url = "https://picsum.photos/id/" + n + "/50/50";
 
     return (
       <li key={index}>
-        <Image src={photos[index % 4]} width={70} roundedCircle></Image>
-        <Button variant="primary" size="large">
-          {item.name}:{item.cost}
-        </Button>
-        <input name={item.name} type="submit" onClick={addToCart}></input>
+        <div className="d-inline-block" style={{marginRight: ".5rem"}}>
+          <Image src={url} width={50} roundedCircle></Image>
+        </div>
+        
+        <div className="d-inline-block" style={{marginRight: ".5rem"}}>
+          <Button variant="primary" size="large">
+            {item.name} <Badge bg="secondary">{item.instock}</Badge>
+            <span className="visually-hidden">in stock</span>
+          </Button>
+        </div>
+        <input className="btn btn-success" name={item.name} type="submit" onClick={addToCart} value={`+ ${item.cost}$`} disabled={item.instock === 0}></input>
       </li>
     );
   });
+
   let cartList = cart.map((item, index) => {
     return (
-      <Card key={index}>
-        <Card.Header>
-          <Accordion.Toggle as={Button} variant="link" eventKey={1 + index}>
-            {item.name}
-          </Accordion.Toggle>
-        </Card.Header>
+      <Accordion.Item eventKey={index + 1} key={index}>
+        <Accordion.Header>{item.name}</Accordion.Header>
         <Accordion.Collapse
-          onClick={() => deleteCartItem(index)}
-          eventKey={1 + index}
-        >
-          <Card.Body>
-            $ {item.cost} from {item.country}
-          </Card.Body>
+          onClick={() => deleteCartItem(index, item)}
+          eventKey={1 + index}>
+          <Accordion.Body>
+            ${item.cost} from {item.country}
+          </Accordion.Body>
         </Accordion.Collapse>
-      </Card>
+        
+    </Accordion.Item>
     );
   });
 
@@ -162,18 +173,44 @@ const Products = (props) => {
     let costs = cart.map((item) => item.cost);
     const reducer = (accum, current) => accum + current;
     let newTotal = costs.reduce(reducer, 0);
-    console.log(`total updated to ${newTotal}`);
     return newTotal;
   };
+
   // TODO: implement the restockProducts function
-  const restockProducts = (url) => {};
+  const restockProducts = (url) => {
+    doFetch(url);
+    let newItems = data.map((item) => {
+      let {name,country,cost,instock} = item;
+      return {name,country,cost,instock};
+    });
+    setItems([...items, ...newItems]);
+  };
 
   return (
     <Container>
       <Row>
         <Col>
           <h1>Product List</h1>
-          <ul style={{ listStyleType: "none" }}>{list}</ul>
+          <ul style={{ listStyleType: "none", paddingLeft: "0" }}>{list}</ul>
+
+          <hr />
+
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              restockProducts(query);
+              console.log(`Restock called on ${query}`);
+            }}
+          >
+            <InputGroup className="mb-3">
+              <FormControl
+                type="text"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+              <Button variant="info" type="submit">ReStock Products</Button>
+            </InputGroup>
+          </form>
         </Col>
         <Col>
           <h1>Cart Contents</h1>
@@ -184,22 +221,6 @@ const Products = (props) => {
           <Button onClick={checkOut}>CheckOut $ {finalList().total}</Button>
           <div> {finalList().total > 0 && finalList().final} </div>
         </Col>
-      </Row>
-      <Row>
-        <form
-          onSubmit={(event) => {
-            restockProducts(`http://localhost:1337/${query}`);
-            console.log(`Restock called on ${query}`);
-            event.preventDefault();
-          }}
-        >
-          <input
-            type="text"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-          <button type="submit">ReStock Products</button>
-        </form>
       </Row>
     </Container>
   );
